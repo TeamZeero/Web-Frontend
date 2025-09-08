@@ -24,15 +24,25 @@ export function AuthCard({ className, role, redirectPath }: AuthCardProps) {
   const [selectedMethod, setSelectedMethod] = React.useState<"email" | "magic" | "aadhaar">("email");
 
   const handleAuthSuccess = React.useCallback(() => {
+    // Get the current user from session storage
+    const currentUser = sessionStorage.getItem('currentUser');
+    const userRole = currentUser ? JSON.parse(currentUser).role : null;
+
+    // Use the redirectPath if provided
     if (redirectPath) {
       router.push(redirectPath);
       return;
     }
-    if (role === "creator") {
+
+    // Redirect based on user role
+    if (userRole === 'admin' || role === 'creator') {
       router.push("/dashboard");
-      return;
+    } else if (userRole === 'public' || role === 'public') {
+      router.push("/dashboard/public");
+    } else {
+      // Default fallback
+      router.push("/");
     }
-    router.push("/");
   }, [redirectPath, role, router]);
 
   return (
@@ -154,38 +164,95 @@ function OAuthButtons() {
   );
 }
 
+import { defaultUsers, User } from "../../lib/defaultUsers";
+
 function EmailPasswordForm({ mode, onSuccess }: { mode: "sign-in" | "sign-up"; onSuccess?: () => void }) {
+  const [error, setError] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    // Simulate API call
+    setTimeout(() => {
+      try {
+        // Find user with matching email and password
+        const user = defaultUsers.find(
+          (user: User) => user.email === email && user.password === password
+        );
+
+        if (user) {
+          // Store user in session (in a real app, use proper session management)
+          sessionStorage.setItem('currentUser', JSON.stringify({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role
+          }));
+          
+          onSuccess?.();
+        } else {
+          setError('Invalid email or password');
+        }
+      } catch (err) {
+        setError('An error occurred during sign in');
+        console.error('Auth error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 500);
+  };
+
   return (
-    <form
-      className="space-y-3"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSuccess?.();
-      }}
-    >
+    <form className="space-y-3" onSubmit={handleSubmit}>
+      {error && (
+        <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
+          {error}
+        </div>
+      )}
+      
       <div className="grid gap-2">
         <Label htmlFor="email" className="flex items-center gap-2">
           <Mail className="h-4 w-4" /> Email
         </Label>
-        <Input id="email" type="email" placeholder="you@example.com" required />
+        <Input 
+          id="email" 
+          name="email"
+          type="email" 
+          placeholder="you@example.com" 
+          required 
+        />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="password" className="flex items-center gap-2">
           <Lock className="h-4 w-4" /> Password
         </Label>
-        <Input id="password" type="password" placeholder="********" required />
+        <Input 
+          id="password" 
+          name="password"
+          type="password" 
+          placeholder="********" 
+          required 
+        />
       </div>
       {mode === "sign-up" && (
         <div className="grid gap-2">
           <Label htmlFor="confirm" className="flex items-center gap-2">
             <Lock className="h-4 w-4" /> Confirm Password
           </Label>
-          <Input id="confirm" type="password" placeholder="********" required />
+          <Input id="confirm" name="confirm" type="password" placeholder="********" required />
         </div>
       )}
-      <Button type="submit" className="mt-2 w-full">
-        {mode === "sign-up" ? "Create account" : "Sign in"}
+      <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
+        {isLoading ? 'Signing in...' : mode === "sign-up" ? "Create account" : "Sign in"}
       </Button>
+      
     </form>
   );
 }

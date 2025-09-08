@@ -32,6 +32,7 @@ interface Survey {
 
 interface SurveyManagementProps {
   surveys: Survey[]
+  viewMode: 'grid' | 'list'
   onDelete: (surveyId: string) => void
   onDuplicate: (surveyId: string) => void
   onStatusChange: (surveyId: string, status: Survey["status"]) => void

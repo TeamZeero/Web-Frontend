@@ -16,7 +16,7 @@ export default function AuthPage() {
         )}
         <AuthCard
           role={role}
-          redirectPath={role === "creator" ? "/dashboard" : undefined}
+          redirectPath={role === "creator" ? "/dashboard" : "/dashboard/public"}
         />
       </div>
     </div>
