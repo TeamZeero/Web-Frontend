@@ -1,101 +1,154 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { FormFlowLogo } from "@/components/ui/logo"
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <header className="border-b bg-white/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-[#f5f7fa]">
+      <header className="border-b bg-white">
         <div className="container mx-auto px-4 py-4">
           <nav className="flex items-center justify-between">
-            <FormFlowLogo size="sm" />
-            <div className="flex items-center space-x-4">
-              <Link href="/builder">
-                <Button variant="outline">Create Survey</Button>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-sm bg-[#0b57d0]" />
+              <div className="flex flex-col leading-tight">
+                <span className="font-semibold">National Survey Platform</span>
+                <span className="text-xs text-muted-foreground">Government of India</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href="/auth?role=creator">
+                <Button variant="outline">Admin / Creator Login</Button>
               </Link>
-              <Link href="/dashboard">
-                <Button>Dashboard</Button>
+              <Link href="/auth?role=public">
+                <Button>Public Login</Button>
               </Link>
             </div>
           </nav>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 text-balance">
-            Create Beautiful Surveys
-            <span className="text-blue-600"> with Ease</span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto text-pretty">
-            Build professional surveys and forms with our intuitive drag-and-drop builder. Collect responses, analyze
-            data, and make informed decisions.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/builder">
-              <Button size="lg" className="w-full sm:w-auto">
-                Start Building
-              </Button>
-            </Link>
-            <Link href="/templates">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent">
-                Browse Templates
-              </Button>
-            </Link>
+      <main className="container mx-auto px-4 py-14 space-y-12">
+        <section className="grid gap-8 md:grid-cols-2 items-center">
+          <div className="space-y-5">
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[#0b3d91]">
+              Inclusive Smart Surveys for Better Governance
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Collect, validate, and monitor responses across India—multi‑language, multi‑channel, and privacy‑first.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/auth?role=creator">
+                <Button className="bg-[#0b57d0] hover:bg-[#0a4ec0]">Admin / Creator Login</Button>
+              </Link>
+              <Link href="/auth?role=public">
+                <Button variant="outline">Public Login</Button>
+              </Link>
+            </div>
           </div>
-        </div>
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle>What is the National Survey Platform?</CardTitle>
+              <CardDescription>Trusted, accessible, and AI‑enabled</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
+              <p>
+                A unified portal for citizen and official surveys—supporting local languages, offline collection,
+                WhatsApp/IVR access, and strong validation to ensure high‑quality datasets.
+              </p>
+              <p>
+                Creators get a no‑code builder with templates and AI assistance; the public gets a simple, secure
+                experience to participate anytime, anywhere.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <Separator />
+
+        <section className="grid md:grid-cols-3 gap-8">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <span className="text-blue-600">🎨</span>
-                </div>
-                Drag & Drop Builder
-              </CardTitle>
-              <CardDescription>Create surveys visually with our intuitive drag-and-drop interface</CardDescription>
+              <CardTitle>No‑Code Builder</CardTitle>
+              <CardDescription>Templates, Prompt Builder, Chat UI</CardDescription>
             </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Design complex, logical surveys quickly without code; democratize authoring for everyone.
+            </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
-                  <span className="text-green-600">📊</span>
-                </div>
-                Real-time Analytics
-              </CardTitle>
-              <CardDescription>Track responses and analyze data with beautiful charts and insights</CardDescription>
+              <CardTitle>Multi‑Channel</CardTitle>
+              <CardDescription>Web, Mobile App, WhatsApp, IVR/Avatars</CardDescription>
             </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Reach diverse respondents on the channels and bandwidths they prefer.
+            </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <span className="text-purple-600">🔗</span>
-                </div>
-                Easy Sharing
-              </CardTitle>
-              <CardDescription>Share your surveys via link, embed them, or export responses</CardDescription>
+              <CardTitle>Rich Para Data</CardTitle>
+              <CardDescription>Photos, docs, audio, GPS, timestamps</CardDescription>
             </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Capture validating context alongside answers to boost integrity and trust.
+            </CardContent>
           </Card>
-        </div>
+        </section>
 
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">Ready to get started?</h2>
-          <Link href="/builder">
-            <Button size="lg">Create Your First Survey</Button>
-          </Link>
-        </div>
+        <section className="grid md:grid-cols-3 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>AI Throughout</CardTitle>
+              <CardDescription>Validate, translate, auto‑code</CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Real‑time checks, multilingual support, and open‑text standardization streamline data quality.
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Monitoring</CardTitle>
+              <CardDescription>Live dashboards & reporting</CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Track field progress, spot issues early, and download reports for actionable insights.
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Privacy & Consent</CardTitle>
+              <CardDescription>Secure-by-design data handling</CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Built with consent management, role‑based access, and audit trails for public trust.
+            </CardContent>
+          </Card>
+        </section>
+
+        <Card className="border-dashed">
+          <CardContent className="py-6 flex flex-wrap items-center gap-3 justify-between">
+            <div className="space-y-1">
+              <div className="text-sm text-muted-foreground">Choose your portal</div>
+              <div className="text-lg font-semibold">Admins build surveys. Citizens participate.</div>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/auth?role=creator">
+                <Button className="bg-[#0b57d0] hover:bg-[#0a4ec0]">Admin / Creator Login</Button>
+              </Link>
+              <Link href="/auth?role=public">
+                <Button variant="outline">Public Login</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </main>
 
-      <footer className="border-t bg-white/80 backdrop-blur-sm mt-16">
+      <footer className="border-t bg-white">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600">
-            <p>&copy; FormFlow. Built with Next.js and React Flow.</p>
+            <p>&copy; National Survey Platform · Government of India</p>
           </div>
         </div>
       </footer>

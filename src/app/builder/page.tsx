@@ -172,6 +172,11 @@ export default function BuilderPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm">
+                  ⬅ Back to Dashboard
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 size="sm"
