@@ -1,162 +1,277 @@
 "use client";
 
-import * as React from "react";
+import { HTMLAttributes, useState } from "react";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import Link from "next/link";
+import { FormFlowLogo } from "../ui/logo";
+import { useSupabase } from "../supabase-provider";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { Mail, Lock, Hash, ArrowLeft } from "lucide-react";
+import { Separator } from "../ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Mail, Lock, Hash } from "lucide-react";
 
-type AuthCardProps = {
-  className?: string;
-  role?: "creator" | "public";
+interface AuthCardProps extends HTMLAttributes<HTMLDivElement> {
   redirectPath?: string;
-};
+  role?: "creator" | "public";
+}
 
-export function AuthCard({ className, role, redirectPath }: AuthCardProps) {
+export function AuthCard({
+  className,
+  redirectPath = "/dashboard",
+  role,
+  ...props
+}: AuthCardProps) {
+  const supabase = useSupabase();
   const router = useRouter();
-  const [activeTab, setActiveTab] = React.useState<string>("sign-in");
-  const [selectedMethod, setSelectedMethod] = React.useState<"email" | "magic" | "aadhaar">("email");
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "error" | "success";
+    text: string;
+  } | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<
+    "email" | "magic" | "aadhaar"
+  >("email");
 
-  const handleAuthSuccess = React.useCallback(() => {
-    // Get the current user from session storage
-    const currentUser = sessionStorage.getItem('currentUser');
-    const userRole = currentUser ? JSON.parse(currentUser).role : null;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
 
-    // Use the redirectPath if provided
-    if (redirectPath) {
-      router.push(redirectPath);
+    if (!supabase) {
+      setMessage({ type: "error", text: "Supabase client not initialized." });
+      setLoading(false);
       return;
     }
 
-    // Redirect based on user role
-    if (userRole === 'admin' || role === 'creator') {
-      router.push("/dashboard");
-    } else if (userRole === 'public' || role === 'public') {
-      router.push("/dashboard/public");
+    let authResponse;
+
+    if (mode === "signup") {
+      authResponse = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { role: role || "public" },
+        },
+      });
     } else {
-      // Default fallback
-      router.push("/");
+      authResponse = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
     }
-  }, [redirectPath, role, router]);
+
+    if (authResponse.error) {
+      setMessage({ type: "error", text: authResponse.error.message });
+    } else if (authResponse.data.user) {
+      // If mode is login, upsert user data. For signup, the database trigger handles this.
+      if (mode === "login") {
+        const { error: userError } = await supabase.from("users").upsert(
+          {
+            id: authResponse.data.user.id,
+            email: authResponse.data.user.email,
+            role: role || "public",
+          },
+          { onConflict: "id" }
+        );
+
+        if (userError) {
+          console.error("Error upserting user data during login:", userError);
+          setMessage({
+            type: "error",
+            text: "Error saving user role on login.",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      setMessage({
+        type: "success",
+        text:
+          mode === "signup"
+            ? "Sign up successful! Please check your email for verification."
+            : "Login successful!",
+      });
+      router.push(redirectPath);
+    } else if (mode === "signup") {
+      setMessage({
+        type: "success",
+        text: "Sign up successful! Please check your email for verification.",
+      });
+    }
+    setLoading(false);
+  };
 
   return (
-    <Card className={cn("w-full max-w-md border-zinc-200/60 dark:border-zinc-800", className)}>
-      <CardHeader className="space-y-2">
-        <CardTitle className="text-center text-2xl font-semibold tracking-tight">
-          {activeTab === "sign-up" ? "Create your account" : "Sign in to your account"}
+    <Card className="w-full max-w-md mx-auto" {...props}>
+      <CardHeader className="space-y-1 text-center">
+        <FormFlowLogo size="md" />
+        <CardTitle className="text-2xl">
+          {" "}
+          {mode === "login" ? "Log In" : "Sign Up"}
         </CardTitle>
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <ArrowLeft className="h-4 w-4" />
-          <Link href="/" className="hover:underline">Back to home</Link>
-        </div>
+        <CardDescription>
+          {role
+            ? `Enter your details to ${
+                mode === "login" ? "log in" : "sign up"
+              } as a ${role}`
+            : `Enter your email below to ${
+                mode === "login" ? "log in" : "create"
+              } your account`}
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <CardContent className="grid gap-4">
+        <Tabs
+          value={mode}
+          onValueChange={(value) => setMode(value as "login" | "signup")}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="sign-in">Sign In</TabsTrigger>
-            <TabsTrigger value="sign-up">Sign Up</TabsTrigger>
+            <TabsTrigger value="login">Log In</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
+          <TabsContent value={mode} className="mt-4 space-y-4">
+            <div className="grid grid-cols-1 gap-2">
+              <OAuthButtons />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 w-full justify-center gap-2"
+                onClick={() =>
+                  setSelectedMethod((prev) =>
+                    prev === "magic" ? "email" : "magic"
+                  )
+                }
+                aria-pressed={selectedMethod === "magic"}
+              >
+                <Mail className="h-4 w-4" /> Magic Link (Supabase)
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 w-full justify-center gap-2"
+                onClick={() =>
+                  setSelectedMethod((prev) =>
+                    prev === "aadhaar" ? "email" : "aadhaar"
+                  )
+                }
+                aria-pressed={selectedMethod === "aadhaar"}
+              >
+                <Hash className="h-4 w-4" /> Aadhaar
+              </Button>
+            </div>
 
-          <div className="mt-4 space-y-4">
-            <TabsContent value="sign-in" className="mt-0 space-y-4">
-              <div className="grid grid-cols-1 gap-2">
-                <OAuthButtons />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 w-full justify-center gap-2"
-                  onClick={() =>
-                    setSelectedMethod((prev) => (prev === "magic" ? "email" : "magic"))
-                  }
-                  aria-pressed={selectedMethod === "magic"}
-                >
-                  <Mail className="h-4 w-4" /> Magic Link (Supabase)
+            <div className="relative">
+              <Separator />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
+                {selectedMethod === "email" ? "Or continue with" : ""}
+              </span>
+            </div>
+
+            {selectedMethod === "email" && (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+                {message && (
+                  <div
+                    className={`py-2 px-3 rounded-lg text-sm ${
+                      message.type === "error"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-green-100 text-green-700"
+                    }`}
+                  >
+                    {message.text}
+                  </div>
+                )}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading
+                    ? "Loading..."
+                    : mode === "login"
+                    ? "Log In"
+                    : "Sign Up"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 w-full justify-center gap-2"
-                  onClick={() =>
-                    setSelectedMethod((prev) => (prev === "aadhaar" ? "email" : "aadhaar"))
-                  }
-                  aria-pressed={selectedMethod === "aadhaar"}
-                >
-                  <Hash className="h-4 w-4" /> Aadhaar
-                </Button>
-              </div>
-
-              <div className="relative">
-                <Separator />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                  {selectedMethod === "email" ? "Or continue with" : ""}
-                </span>
-              </div>
-
-              {selectedMethod === "email" && <EmailPasswordForm mode="sign-in" onSuccess={handleAuthSuccess} />}
-              {selectedMethod === "magic" && <MagicLinkBox />}
-              {selectedMethod === "aadhaar" && <AadhaarBox mode="sign-in" />}
-            </TabsContent>
-
-            <TabsContent value="sign-up" className="mt-0 space-y-4">
-              <div className="grid grid-cols-1 gap-2">
-                <OAuthButtons />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 w-full justify-center gap-2"
-                  onClick={() =>
-                    setSelectedMethod((prev) => (prev === "magic" ? "email" : "magic"))
-                  }
-                  aria-pressed={selectedMethod === "magic"}
-                >
-                  <Mail className="h-4 w-4" /> Magic Link (Supabase)
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 w-full justify-center gap-2"
-                  onClick={() =>
-                    setSelectedMethod((prev) => (prev === "aadhaar" ? "email" : "aadhaar"))
-                  }
-                  aria-pressed={selectedMethod === "aadhaar"}
-                >
-                  <Hash className="h-4 w-4" /> Aadhaar
-                </Button>
-              </div>
-
-              <div className="relative">
-                <Separator />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                  {selectedMethod === "email" ? "Or continue with" : ""}
-                </span>
-              </div>
-
-              {selectedMethod === "email" && <EmailPasswordForm mode="sign-up" onSuccess={handleAuthSuccess} />}
-              {selectedMethod === "magic" && <MagicLinkBox />}
-              {selectedMethod === "aadhaar" && <AadhaarBox mode="sign-up" />}
-            </TabsContent>
-          </div>
+              </form>
+            )}
+            {selectedMethod === "magic" && <MagicLinkBox />}
+            {selectedMethod === "aadhaar" && <AadhaarBox mode={mode} />}
+          </TabsContent>
         </Tabs>
       </CardContent>
-      <CardFooter className="flex flex-col gap-2 text-center text-xs text-muted-foreground">
-        <p>
-          By continuing you agree to our <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.
-        </p>
+      <CardFooter className="block text-center text-sm text-muted-foreground">
+        {mode === "login"
+          ? "Don't have an account?"
+          : "Already have an account?"}{" "}
+        <Button
+          variant="link"
+          onClick={() => setMode(mode === "login" ? "signup" : "login")}
+        >
+          {mode === "login" ? "Sign Up" : "Log In"}
+        </Button>
+        <Link
+          href="/"
+          className="block text-xs mt-2 text-blue-600 hover:underline"
+        >
+          ← Back to homepage
+        </Link>
       </CardFooter>
     </Card>
   );
 }
 
 function OAuthButtons() {
+  const supabase = useSupabase();
+  const router = useRouter();
+
+  async function signInWithGoogle() {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    if (error) {
+      alert('Google sign-in failed: ' + error.message);
+    }
+    // OAuth will redirect to the provider, Supabase will callback to configured redirect URL
+  }
+
   return (
     <div className="grid grid-cols-1 gap-2">
-      <Button variant="outline" className="h-10 w-full justify-center gap-2">
+      <Button
+        variant="outline"
+        className="h-10 w-full justify-center gap-2"
+        onClick={signInWithGoogle}
+      >
         <GoogleIcon className="h-5 w-5" />
         Continue with Google
       </Button>
@@ -164,100 +279,23 @@ function OAuthButtons() {
   );
 }
 
-import { defaultUsers, User } from "../../lib/defaultUsers";
-
-function EmailPasswordForm({ mode, onSuccess }: { mode: "sign-in" | "sign-up"; onSuccess?: () => void }) {
-  const [error, setError] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-
-    // Simulate API call
-    setTimeout(() => {
-      try {
-        // Find user with matching email and password
-        const user = defaultUsers.find(
-          (user: User) => user.email === email && user.password === password
-        );
-
-        if (user) {
-          // Store user in session (in a real app, use proper session management)
-          sessionStorage.setItem('currentUser', JSON.stringify({
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
-          }));
-          
-          onSuccess?.();
-        } else {
-          setError('Invalid email or password');
-        }
-      } catch (err) {
-        setError('An error occurred during sign in');
-        console.error('Auth error:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 500);
-  };
-
-  return (
-    <form className="space-y-3" onSubmit={handleSubmit}>
-      {error && (
-        <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">
-          {error}
-        </div>
-      )}
-      
-      <div className="grid gap-2">
-        <Label htmlFor="email" className="flex items-center gap-2">
-          <Mail className="h-4 w-4" /> Email
-        </Label>
-        <Input 
-          id="email" 
-          name="email"
-          type="email" 
-          placeholder="you@example.com" 
-          required 
-        />
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="password" className="flex items-center gap-2">
-          <Lock className="h-4 w-4" /> Password
-        </Label>
-        <Input 
-          id="password" 
-          name="password"
-          type="password" 
-          placeholder="********" 
-          required 
-        />
-      </div>
-      {mode === "sign-up" && (
-        <div className="grid gap-2">
-          <Label htmlFor="confirm" className="flex items-center gap-2">
-            <Lock className="h-4 w-4" /> Confirm Password
-          </Label>
-          <Input id="confirm" name="confirm" type="password" placeholder="********" required />
-        </div>
-      )}
-      <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
-        {isLoading ? 'Signing in...' : mode === "sign-up" ? "Create account" : "Sign in"}
-      </Button>
-      
-    </form>
-  );
-}
-
 function MagicLinkBox() {
+  const supabase = useSupabase();
+  const [email, setEmail] = useState('');
+  const [sending, setSending] = useState(false);
+
+  async function sendMagicLink() {
+    if (!supabase || !email) return;
+    setSending(true);
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + '/auth/callback' } });
+    if (error) {
+      alert('Failed to send magic link: ' + error.message);
+    } else {
+      alert('Magic link sent. Check your email.');
+    }
+    setSending(false);
+  }
+
   return (
     <div className="space-y-3 rounded-md border p-3">
       <div className="grid gap-2">
@@ -265,16 +303,27 @@ function MagicLinkBox() {
           <Mail className="h-4 w-4" /> Magic Link (Supabase)
         </Label>
         <div className="flex gap-2">
-          <Input id="magic-email" type="email" placeholder="you@example.com" className="flex-1" />
-          <Button type="button" variant="secondary">Send Link</Button>
+          <Input
+            id="magic-email"
+            type="email"
+            placeholder="you@example.com"
+            className="flex-1"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Button type="button" variant="secondary" onClick={sendMagicLink} disabled={sending}>
+            {sending ? 'Sending...' : 'Send Link'}
+          </Button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">We will email you a one-time sign-in link.</p>
+      <p className="text-xs text-muted-foreground">
+        We will email you a one-time sign-in link.
+      </p>
     </div>
   );
 }
 
-function AadhaarBox({ mode }: { mode: "sign-in" | "sign-up" }) {
+function AadhaarBox({ mode }: { mode: "login" | "signup" }) {
   return (
     <div className="space-y-3 rounded-md border p-3">
       <div className="grid gap-2">
@@ -282,11 +331,21 @@ function AadhaarBox({ mode }: { mode: "sign-in" | "sign-up" }) {
           <Hash className="h-4 w-4" /> Aadhaar Number
         </Label>
         <div className="flex gap-2">
-          <Input id="aadhaar" inputMode="numeric" pattern="[0-9]{12}" placeholder="1234 5678 9012" className="flex-1" />
-          <Button type="button" variant="secondary">{mode === "sign-up" ? "Verify" : "Continue"}</Button>
+          <Input
+            id="aadhaar"
+            inputMode="numeric"
+            pattern="[0-9]{12}"
+            placeholder="1234 5678 9012"
+            className="flex-1"
+          />
+          <Button type="button" variant="secondary">
+            {mode === "signup" ? "Verify" : "Continue"}
+          </Button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">Enter your 12-digit Aadhaar to proceed.</p>
+      <p className="text-xs text-muted-foreground">
+        Enter your 12-digit Aadhaar to proceed.
+      </p>
     </div>
   );
 }
@@ -294,9 +353,10 @@ function AadhaarBox({ mode }: { mode: "sign-in" | "sign-up" }) {
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
-      <path fill="#EA4335" d="M12 10.2v3.92h5.46c-.24 1.4-1.65 4.1-5.46 4.1-3.29 0-5.98-2.72-5.98-6.08S8.71 6.08 12 6.08c1.88 0 3.14.8 3.86 1.48l2.63-2.54C16.88 3.33 14.62 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12s4.3 9.6 9.6 9.6c5.54 0 9.2-3.88 9.2-9.34 0-.63-.07-1.1-.16-1.58H12z" />
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.92h5.46c-.24 1.4-1.65 4.1-5.46 4.1-3.29 0-5.98-2.72-5.98-6.08S8.71 6.08 12 6.08c1.88 0 3.14.8 3.86 1.48l2.63-2.54C16.88 3.33 14.62 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12s4.3 9.6 9.6 9.6c5.54 0 9.2-3.88 9.2-9.34 0-.63-.07-1.1-.16-1.58H12z"
+      />
     </svg>
   );
 }
-
-
